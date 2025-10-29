@@ -9,7 +9,7 @@ export class AddRestaurantTimezoneToProducts1730082000000
       new TableColumn({
         name: "restaurant_timezone",
         type: "varchar",
-        isNullable: true, // pode ser nulo se não for obrigatório
+        isNullable: true,
       })
     );
   }

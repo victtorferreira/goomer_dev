@@ -34,3 +34,36 @@ export function getCurrentDayAndTimeInTimezone(timezone: string) {
     currentTime: `${hour}:${minute}`,
   };
 }
+
+function normalizeTime(time: string): string {
+  return time.length > 5 ? time.slice(0, 5) : time;
+}
+
+export function isPromotionActive(
+  start: string,
+  end: string,
+  current: string
+): boolean {
+  if (!start || !end || !current) {
+    console.error("isPromotionActive recebeu valor inválido", {
+      start,
+      end,
+      current,
+    });
+    return false;
+  }
+
+  const [sh, sm] = normalizeTime(start).split(":").map(Number);
+  const [eh, em] = normalizeTime(end).split(":").map(Number);
+  const [ch, cm] = normalizeTime(current).split(":").map(Number);
+
+  const startMinutes = sh * 60 + sm;
+  const endMinutes = eh * 60 + em;
+  const currentMinutes = ch * 60 + cm;
+
+  if (endMinutes > startMinutes) {
+    return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+  } else {
+    return currentMinutes >= startMinutes || currentMinutes <= endMinutes;
+  }
+}

@@ -3,9 +3,9 @@ export interface Promotion {
   product_id: string;
   description: string;
   promotional_price: number;
-  days_of_week: number[]; // padronizado como number[]
-  start_time: string; // HH:mm
-  end_time: string; // HH:mm
+  days_of_week: number[];
+  start_time: string;
+  end_time: string;
   created_at: Date;
   updated_at: Date;
 }

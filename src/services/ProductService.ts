@@ -5,9 +5,6 @@ import { AppError } from "../utils/AppError";
 import { CreateProductDTO, UpdateProductDTO } from "../dtos";
 
 class ProductService {
-  /**
-   * Cria um novo produto.
-   */
   async createProduct(data: CreateProductDTO): Promise<Product> {
     if (!data.name) {
       throw new AppError("Nome é obrigatório", 400);
@@ -17,16 +14,13 @@ class ProductService {
       throw new AppError("Preço é obrigatório", 400);
     }
 
-    if (data.price < 0) {
+    if (data.price <= 0) {
       throw new AppError("Preço deve ser positivo", 400);
     }
 
     return ProductRepository.create(data);
   }
 
-  /**
-   * Retorna todos os produtos (pode filtrar por categoria e visibilidade).
-   */
   async getAllProducts(filters?: {
     category?: ProductCategory;
     visible?: boolean;
@@ -34,9 +28,6 @@ class ProductService {
     return ProductRepository.findAll(filters);
   }
 
-  /**
-   * Retorna um produto pelo ID.
-   */
   async getProductById(id: string): Promise<Product> {
     const product = await ProductRepository.findById(id);
 
@@ -47,13 +38,9 @@ class ProductService {
     return product;
   }
 
-  /**
-   * Atualiza um produto existente.
-   */
   async updateProduct(id: string, data: UpdateProductDTO): Promise<Product> {
     await this.ensureProductExists(id);
 
-    // Validação básica (caso venha preço negativo, etc.)
     if (data.price !== undefined && data.price < 0) {
       throw new AppError("Preço deve ser positivo", 400);
     }
@@ -67,13 +54,9 @@ class ProductService {
     return product;
   }
 
-  /**
-   * Deleta um produto e suas promoções associadas.
-   */
   async deleteProduct(id: string): Promise<void> {
     await this.ensureProductExists(id);
 
-    // Deletar promoções associadas
     await PromotionRepository.deleteByProductId(id);
 
     const deleted = await ProductRepository.delete(id);
@@ -83,9 +66,6 @@ class ProductService {
     }
   }
 
-  /**
-   * Verifica se um produto existe antes de operações críticas.
-   */
   private async ensureProductExists(id: string): Promise<void> {
     const exists = await ProductRepository.exists(id);
     if (!exists) {

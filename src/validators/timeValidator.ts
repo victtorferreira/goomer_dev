@@ -1,5 +1,4 @@
 export function isValidTimeFormat(time: string): boolean {
-  // Regex para validar formato HH:mm (00:00 até 23:59)
   const regex = /^([01]\d|2[0-3]):([0-5]\d)$/;
   return regex.test(time);
 }

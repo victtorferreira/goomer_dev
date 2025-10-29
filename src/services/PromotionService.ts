@@ -5,22 +5,20 @@ import { AppError } from "../utils/AppError";
 import { CreatePromotionDTO, UpdatePromotionDTO } from "../dtos";
 
 class PromotionService {
-  /**
-   * Cria uma nova promoção.
-   */
   async createPromotion(data: CreatePromotionDTO): Promise<Promotion> {
     await this.ensureProductExists(data.product_id);
-    await this.validatePromotionalPrice(
-      data.product_id,
-      data.promotional_price
-    );
+
+    if (!data.days_of_week || data.days_of_week.length === 0) {
+      throw new AppError("days_of_week não pode estar vazio", 400);
+    }
+
+    if (data.discount_percentage < 0 || data.discount_percentage > 100) {
+      throw new AppError("Desconto deve estar entre 0 e 100", 400);
+    }
 
     return PromotionRepository.create(data);
   }
 
-  /**
-   * Retorna todas as promoções (pode filtrar por produto).
-   */
   async getAllPromotions(productId?: string): Promise<Promotion[]> {
     if (productId) {
       await this.ensureProductExists(productId);
@@ -29,27 +27,20 @@ class PromotionService {
     return PromotionRepository.findAll(productId);
   }
 
-  /**
-   * Retorna uma promoção pelo ID.
-   */
   async getPromotionById(id: string): Promise<Promotion> {
     return this.ensurePromotionExists(id);
   }
 
-  /**
-   * Atualiza uma promoção existente.
-   */
   async updatePromotion(
     id: string,
     data: UpdatePromotionDTO
   ): Promise<Promotion> {
-    const promotion = await this.ensurePromotionExists(id);
+    await this.ensurePromotionExists(id);
 
-    if (data.promotional_price !== undefined) {
-      await this.validatePromotionalPrice(
-        promotion.product_id,
-        data.promotional_price
-      );
+    if (data.discount_percentage !== undefined) {
+      if (data.discount_percentage < 0 || data.discount_percentage > 100) {
+        throw new AppError("Desconto deve estar entre 0 e 100", 400);
+      }
     }
 
     const updated = await PromotionRepository.update(id, data);
@@ -60,9 +51,6 @@ class PromotionService {
     return updated;
   }
 
-  /**
-   * Deleta uma promoção.
-   */
   async deletePromotion(id: string): Promise<void> {
     await this.ensurePromotionExists(id);
 
@@ -72,9 +60,6 @@ class PromotionService {
     }
   }
 
-  /**
-   * Verifica se uma promoção existe.
-   */
   private async ensurePromotionExists(id: string): Promise<Promotion> {
     const promotion = await PromotionRepository.findById(id);
     if (!promotion) {
@@ -83,47 +68,11 @@ class PromotionService {
     return promotion;
   }
 
-  /**
-   * Verifica se um produto existe.
-   */
   private async ensureProductExists(productId: string): Promise<void> {
     const exists = await ProductRepository.exists(productId);
     if (!exists) {
       throw new AppError("Produto não encontrado", 404);
     }
-  }
-
-  /**
-   * Valida se o preço promocional é menor que o preço original.
-   */
-  private async validatePromotionalPrice(
-    productId: string,
-    promotionalPrice: number
-  ): Promise<void> {
-    const product = await ProductRepository.findById(productId);
-    if (product && promotionalPrice >= product.price) {
-      throw new AppError(
-        "Preço promocional deve ser menor que o preço original",
-        400
-      );
-    }
-  }
-
-  isPromotionActive(
-    promo: { days_of_week: number[]; start_time: string; end_time: string },
-    date: Date
-  ): boolean {
-    const day = date.getDay(); // 0 = domingo, 1 = segunda...
-    if (!promo.days_of_week.includes(day)) return false;
-
-    const [sh, sm] = promo.start_time.split(":").map(Number);
-    const [eh, em] = promo.end_time.split(":").map(Number);
-
-    const startMinutes = sh * 60 + sm;
-    const endMinutes = eh * 60 + em;
-    const currentMinutes = date.getHours() * 60 + date.getMinutes();
-
-    return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
   }
 }
 

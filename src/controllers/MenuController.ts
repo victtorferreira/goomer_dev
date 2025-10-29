@@ -1,46 +1,37 @@
 import { Request, Response } from "express";
-import ProductRepository from "../repositories/ProductRepository";
-import PromotionRepository from "../repositories/PromotionRepository";
+import { MenuService } from "../services/MenuService";
+import { ProductCategory } from "../models";
 
 class MenuController {
-  async getMenu(_req: Request, res: Response) {
-    const products = await ProductRepository.findAll({ visible: true });
+  private menuService = new MenuService();
 
-    const today = new Date();
-    const currentDay = today.getDay(); // 0 = domingo, 6 = sábado
-    const currentMinutes = today.getHours() * 60 + today.getMinutes();
+  getMenu = async (req: Request, res: Response) => {
+    try {
+      const { category, timezone } = req.query;
 
-    const menu = [];
+      let categoryEnum: ProductCategory | undefined;
+      if (
+        typeof category === "string" &&
+        Object.values(ProductCategory).includes(category as ProductCategory)
+      ) {
+        categoryEnum = category as ProductCategory;
+      }
 
-    for (const product of products) {
-      const promotions = await PromotionRepository.findByProductId(product.id);
+      const menu = await this.menuService.getMenuItems(
+        categoryEnum,
+        timezone as string | undefined
+      );
 
-      // filtra promoções ativas
-      const activePromotion = promotions.find((promo) => {
-        if (!promo.days_of_week.includes(currentDay)) return false;
-
-        const [sh, sm] = promo.start_time
-          .split(":")
-          .map((x) => parseInt(x, 10));
-        const [eh, em] = promo.end_time.split(":").map((x) => parseInt(x, 10));
-
-        const startMinutes = sh * 60 + sm;
-        const endMinutes = eh * 60 + em;
-
-        return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
-      });
-
-      menu.push({
-        ...product,
-        price: activePromotion
-          ? activePromotion.promotional_price
-          : product.price,
-        promotion: activePromotion ? activePromotion.description : null,
+      res.json({ status: "success", data: menu });
+    } catch (error) {
+      console.error("Erro em getMenu:", error);
+      res.status(500).json({
+        status: "error",
+        message:
+          error instanceof Error ? error.message : "Erro interno no servidor",
       });
     }
-
-    res.json({ status: "success", data: menu });
-  }
+  };
 }
 
 export default new MenuController();

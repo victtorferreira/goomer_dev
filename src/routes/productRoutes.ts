@@ -1,5 +1,5 @@
 import { Router } from "express";
-import ProductController from "../controllers/ProductController"; // <-- corrigido
+import ProductController from "../controllers/ProductController";
 import {
   validateCreateProduct,
   validateUpdateProduct,

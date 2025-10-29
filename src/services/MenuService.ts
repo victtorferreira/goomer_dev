@@ -1,5 +1,8 @@
 import { Product, Promotion, MenuItem, ProductCategory } from "../models";
-import { getCurrentDayAndTimeInTimezone } from "../utils/time";
+import {
+  getCurrentDayAndTimeInTimezone,
+  isPromotionActive,
+} from "../utils/time";
 import ProductRepository from "../repositories/ProductRepository";
 import PromotionRepository from "../repositories/PromotionRepository";
 
@@ -11,16 +14,13 @@ export class MenuService {
     const products = await ProductRepository.findAll();
     const promotions = await PromotionRepository.findAll();
 
-    // Fuso horário padrão
     const tz = timezone || "America/Sao_Paulo";
     const { currentDay, currentTime } = getCurrentDayAndTimeInTimezone(tz);
 
-    // filtra produtos visíveis e, se for o caso, pela categoria
     const visibleProducts = products.filter(
       (p) => p.visible && (!category || p.category === category)
     );
 
-    // mapeia produtos para menu
     const menuItems: MenuItem[] = visibleProducts.map((product: Product) => {
       const activePromotion = this.findActivePromotionForProduct(
         product.id,
@@ -51,7 +51,6 @@ export class MenuService {
       };
     });
 
-    // ordena pelo display_order, se existir
     menuItems.sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
 
     return menuItems;
@@ -67,7 +66,19 @@ export class MenuService {
       if (promo.product_id !== productId) return false;
       if (!promo.days_of_week.includes(currentDay)) return false;
 
-      return currentTime >= promo.start_time && currentTime <= promo.end_time;
+      const active = isPromotionActive(
+        promo.start_time,
+        promo.end_time,
+        currentTime
+      );
+      console.log("Promo check", {
+        productId,
+        currentDay,
+        currentTime,
+        promo,
+        active,
+      });
+      return active;
     });
   }
 }

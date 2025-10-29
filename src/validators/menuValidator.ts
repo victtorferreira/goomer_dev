@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { ProductCategory } from "../models";
 
-// Regex para validar timezone IANA
 function isValidTimezone(tz: string): boolean {
   try {
     Intl.DateTimeFormat(undefined, { timeZone: tz });

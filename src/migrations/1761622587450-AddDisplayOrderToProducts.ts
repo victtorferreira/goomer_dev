@@ -9,7 +9,7 @@ export class AddDisplayOrderToProducts1730081000000
       new TableColumn({
         name: "display_order",
         type: "int",
-        isNullable: true, // pode ser nulo, já que nem todo produto precisa de ordem
+        isNullable: true, 
       })
     );
   }

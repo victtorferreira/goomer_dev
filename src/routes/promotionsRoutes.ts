@@ -1,6 +1,6 @@
 import { Router } from "express";
 import PromotionController from "../controllers/PromotionController";
-import { validateUUID } from "../validators/promotionValidator"; // se tiver validadores
+import { validateUUID } from "../validators/promotionValidator";
 
 const router = Router();
 

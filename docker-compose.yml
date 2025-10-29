@@ -1,3 +1,4 @@
+version: "3.9"
 
 services:
   db:
@@ -5,13 +6,15 @@ services:
     container_name: goomer_db
     restart: always
     environment:
-      POSTGRES_USER: goomer
-      POSTGRES_PASSWORD: goomer
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
       POSTGRES_DB: goomer_menu
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - goomer_network
 
   api:
     build: .
@@ -19,14 +22,32 @@ services:
     restart: always
     depends_on:
       - db
-    environment:
-      DATABASE_URL: postgres://goomer:goomer@db:5432/goomer_menu
-      NODE_ENV: development
+    env_file: .env.docker   # ✅ carrega automaticamente o .env.docker
     ports:
       - "3000:3000"
     volumes:
       - .:/app
       - /app/node_modules
+    networks:
+      - goomer_network
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: goomer_pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "8080:80"
+    depends_on:
+      - db
+    networks:
+      - goomer_network
 
 volumes:
   postgres_data:
+
+networks:
+  goomer_network:
+    driver: bridge

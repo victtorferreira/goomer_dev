@@ -1,55 +1,146 @@
 import PromotionService from "../../services/PromotionService";
 import ProductRepository from "../../repositories/ProductRepository";
 import PromotionRepository from "../../repositories/PromotionRepository";
-import { ProductCategory } from "../../models";
 
 jest.mock("../../repositories/ProductRepository");
 jest.mock("../../repositories/PromotionRepository");
 
-describe("PromotionService", () => {
-  it("cria promoção válida", async () => {
-    (ProductRepository.exists as jest.Mock).mockResolvedValue(true);
-    (ProductRepository.findById as jest.Mock).mockResolvedValue({
-      id: "p1",
-      price: 50,
-      category: ProductCategory.PRATOS_PRINCIPAIS,
-    });
-    (PromotionRepository.create as jest.Mock).mockResolvedValue({
-      id: "promo1",
-      product_id: "p1",
-      promotional_price: 30,
-    });
-
-    const promo = await PromotionService.createPromotion({
-      product_id: "p1",
-      description: "Promo teste",
-      promotional_price: 30,
-      days_of_week: [1],
-      start_time: "10:00",
-      end_time: "12:00",
-    });
-
-    expect(promo).toHaveProperty("id");
-    expect(promo.promotional_price).toBe(30);
+describe("PromotionService - Unit", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
-  it("lança erro se preço promocional >= preço original", async () => {
-    (ProductRepository.exists as jest.Mock).mockResolvedValue(true);
-    (ProductRepository.findById as jest.Mock).mockResolvedValue({
-      id: "p1",
-      price: 20,
-      category: ProductCategory.PRATOS_PRINCIPAIS,
+  describe("createPromotion", () => {
+    it("deve criar promoção válida", async () => {
+      const mockPromotion = {
+        id: "promo-123",
+        product_id: "prod-1",
+        description: "Happy Hour",
+        promotional_price: 25,
+        days_of_week: [1, 2, 3, 4, 5],
+        start_time: "18:00:00",
+        end_time: "20:00:00",
+        created_at: new Date(),
+        updated_at: new Date(),
+      };
+
+      (ProductRepository.exists as jest.Mock).mockResolvedValue(true);
+      (PromotionRepository.create as jest.Mock).mockResolvedValue(
+        mockPromotion
+      );
+
+      const result = await PromotionService.createPromotion({
+        product_id: "prod-1",
+        description: "Happy Hour",
+        discount_percentage: 50,
+        days_of_week: [1, 2, 3, 4, 5],
+        start_time: "18:00",
+        end_time: "20:00",
+      });
+
+      expect(result).toEqual(mockPromotion);
+      expect(ProductRepository.exists).toHaveBeenCalledWith("prod-1");
+      expect(PromotionRepository.create).toHaveBeenCalledTimes(1);
     });
 
-    await expect(
-      PromotionService.createPromotion({
-        product_id: "p1",
-        description: "Promo inválida",
-        promotional_price: 25,
-        days_of_week: [1],
-        start_time: "10:00",
-        end_time: "12:00",
-      })
-    ).rejects.toThrow("Preço promocional deve ser menor que o preço original");
+    it("deve lançar erro se produto não existir", async () => {
+      (ProductRepository.exists as jest.Mock).mockResolvedValue(false);
+
+      await expect(
+        PromotionService.createPromotion({
+          product_id: "prod-inexistente",
+          description: "Promo",
+          discount_percentage: 50,
+          days_of_week: [1],
+          start_time: "18:00",
+          end_time: "20:00",
+        })
+      ).rejects.toThrow("Produto não encontrado");
+
+      expect(PromotionRepository.create).not.toHaveBeenCalled();
+    });
+
+    it("deve lançar erro se desconto for negativo", async () => {
+      (ProductRepository.exists as jest.Mock).mockResolvedValue(true);
+
+      await expect(
+        PromotionService.createPromotion({
+          product_id: "prod-1",
+          description: "Promo",
+          discount_percentage: -10,
+          days_of_week: [1],
+          start_time: "18:00",
+          end_time: "20:00",
+        })
+      ).rejects.toThrow("Desconto deve estar entre 0 e 100");
+    });
+
+    it("deve lançar erro se desconto for > 100", async () => {
+      (ProductRepository.exists as jest.Mock).mockResolvedValue(true);
+
+      await expect(
+        PromotionService.createPromotion({
+          product_id: "prod-1",
+          description: "Promo",
+          discount_percentage: 150,
+          days_of_week: [1],
+          start_time: "18:00",
+          end_time: "20:00",
+        })
+      ).rejects.toThrow("Desconto deve estar entre 0 e 100");
+    });
+
+    it("deve lançar erro se days_of_week estiver vazio", async () => {
+      (ProductRepository.exists as jest.Mock).mockResolvedValue(true);
+
+      await expect(
+        PromotionService.createPromotion({
+          product_id: "prod-1",
+          description: "Promo",
+          discount_percentage: 50,
+          days_of_week: [],
+          start_time: "18:00",
+          end_time: "20:00",
+        })
+      ).rejects.toThrow();
+    });
+  });
+
+  describe("updatePromotion", () => {
+    it("deve atualizar promoção existente", async () => {
+      const mockUpdated = {
+        id: "promo-1",
+        product_id: "prod-1",
+        description: "Descrição Atualizada",
+        promotional_price: 30,
+        days_of_week: [1, 2],
+        start_time: "19:00:00",
+        end_time: "21:00:00",
+        created_at: new Date(),
+        updated_at: new Date(),
+      };
+
+      (PromotionRepository.findById as jest.Mock).mockResolvedValue({
+        id: "promo-1",
+        product_id: "prod-1",
+      });
+      (PromotionRepository.update as jest.Mock).mockResolvedValue(mockUpdated);
+
+      const result = await PromotionService.updatePromotion("promo-1", {
+        description: "Descrição Atualizada",
+      });
+
+      expect(result).toEqual(mockUpdated);
+    });
+
+    it("deve lançar erro se promoção não existir", async () => {
+      (PromotionRepository.findById as jest.Mock).mockResolvedValue(null);
+
+      await expect(
+        PromotionService.updatePromotion("promo-inexistente", {
+          description: "Nova",
+        })
+      ).rejects.toThrow("Promoção não encontrada");
+    });
   });
 });

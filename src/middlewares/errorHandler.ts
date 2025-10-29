@@ -7,7 +7,6 @@ export function errorHandler(
   res: Response,
   _next: NextFunction
 ) {
-  // Se for um AppError (erro de negócio ou esperado)
   if (err instanceof AppError) {
     return res.status(err.statusCode).json({
       status: "error",
@@ -15,10 +14,8 @@ export function errorHandler(
     });
   }
 
-  // Se for um erro inesperado
   console.error("Erro inesperado:", err);
 
-  // Em desenvolvimento, podemos expor mais detalhes
   if (process.env.NODE_ENV === "development") {
     return res.status(500).json({
       status: "error",
@@ -27,7 +24,6 @@ export function errorHandler(
     });
   }
 
-  // Em produção, resposta genérica
   return res.status(500).json({
     status: "error",
     message: "Erro interno do servidor",

@@ -1,40 +1,44 @@
-import type {
-  Request as ExpressRequest,
-  Response as ExpressResponse,
-  NextFunction,
-} from "express";
+import { Request, Response, NextFunction } from "express";
+import { validate as isUUID } from "uuid";
 
 const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
-const uuidRegex =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i;
 
 export function validateUUID(
-  req: ExpressRequest,
-  res: ExpressResponse,
+  req: Request,
+  res: Response,
   next: NextFunction
-) {
-  const { id } = req.params;
-  if (!uuidRegex.test(id)) {
+): Response | void {
+  let { id } = req.params;
+
+  if (!id) {
     return res.status(400).json({ error: "ID inválido" });
   }
+
+  id = id.trim();
+
+  if (!isUUID(id)) {
+    return res.status(400).json({ error: "ID inválido" });
+  }
+
+  req.params.id = id;
   return next();
 }
 
 export function validateCreatePromotion(
-  req: ExpressRequest,
-  res: ExpressResponse,
+  req: Request,
+  res: Response,
   next: NextFunction
 ) {
   const {
     product_id,
     description,
-    promotional_price,
+    discount_percentage,
     days_of_week,
     start_time,
     end_time,
   } = req.body ?? {};
 
-  if (!product_id || typeof product_id !== "string") {
+  if (!product_id || typeof product_id !== "string" || !isUUID(product_id)) {
     return res.status(400).json({ error: "ID do produto inválido" });
   }
 
@@ -46,10 +50,14 @@ export function validateCreatePromotion(
     return res.status(400).json({ error: "Descrição é obrigatória" });
   }
 
-  if (typeof promotional_price !== "number" || promotional_price <= 0) {
+  if (
+    typeof discount_percentage !== "number" ||
+    discount_percentage < 0 ||
+    discount_percentage > 100
+  ) {
     return res
       .status(400)
-      .json({ error: "Preço promocional deve ser positivo" });
+      .json({ error: "O desconto deve ser um número entre 0 e 100" });
   }
 
   if (
@@ -65,12 +73,8 @@ export function validateCreatePromotion(
       .json({ error: "Horários devem estar no formato HH:mm" });
   }
 
-  const [sh, sm] = start_time
-    .split(":")
-    .map((x: string) => Number.parseInt(x, 10));
-  const [eh, em] = end_time
-    .split(":")
-    .map((x: string) => Number.parseInt(x, 10));
+  const [sh, sm] = start_time.split(":").map((x: string) => parseInt(x, 10));
+  const [eh, em] = end_time.split(":").map((x: string) => parseInt(x, 10));
 
   const startMinutes = sh * 60 + sm;
   const endMinutes = eh * 60 + em;
@@ -91,8 +95,8 @@ export function validateCreatePromotion(
 }
 
 export function validateUpdatePromotion(
-  req: ExpressRequest,
-  res: ExpressResponse,
+  req: Request,
+  res: Response,
   next: NextFunction
 ) {
   if (!req.body || Object.keys(req.body).length === 0) {
@@ -100,5 +104,49 @@ export function validateUpdatePromotion(
       error: "Pelo menos um campo deve ser fornecido para atualização",
     });
   }
-  return validateCreatePromotion(req, res, next);
+
+  const {
+    description,
+    discount_percentage,
+    days_of_week,
+    start_time,
+    end_time,
+  } = req.body;
+
+  if (
+    description !== undefined &&
+    (typeof description !== "string" || description.trim().length === 0)
+  ) {
+    return res.status(400).json({ error: "Descrição inválida" });
+  }
+
+  if (
+    discount_percentage !== undefined &&
+    (typeof discount_percentage !== "number" ||
+      discount_percentage < 0 ||
+      discount_percentage > 100)
+  ) {
+    return res
+      .status(400)
+      .json({ error: "O desconto deve ser um número entre 0 e 100" });
+  }
+
+  if (
+    days_of_week !== undefined &&
+    (!Array.isArray(days_of_week) ||
+      days_of_week.some((d) => typeof d !== "number" || d < 0 || d > 6))
+  ) {
+    return res.status(400).json({ error: "Dias da semana inválidos" });
+  }
+
+  if (
+    (start_time !== undefined && !timeRegex.test(start_time)) ||
+    (end_time !== undefined && !timeRegex.test(end_time))
+  ) {
+    return res
+      .status(400)
+      .json({ error: "Horários devem estar no formato HH:mm" });
+  }
+
+  return next();
 }

@@ -6,21 +6,18 @@ import { errorHandler } from "./middlewares/errorHandler";
 
 const app: Application = express();
 
-// Middlewares de segurança
 app.use(helmet());
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || "*", // em produção, configure domínios permitidos
+    origin: process.env.CORS_ORIGIN || "*",
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
-// Body parser
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health check
 app.get("/health", (_req, res) => {
   res.status(200).json({
     status: "ok",
@@ -29,10 +26,8 @@ app.get("/health", (_req, res) => {
   });
 });
 
-// Rotas da API
 app.use("/api", routes);
 
-// 404 handler
 app.use((_req, res) => {
   res.status(404).json({
     status: "error",
@@ -40,7 +35,6 @@ app.use((_req, res) => {
   });
 });
 
-// Error handler (deve ser o último middleware)
 app.use(errorHandler);
 
 export default app;
